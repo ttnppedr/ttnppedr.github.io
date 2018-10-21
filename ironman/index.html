@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>ironman</title>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+<script>
+    var urls = [
+        'https://ithelp.ithome.com.tw/users/20107705/ironman/1898',
+        'https://ithelp.ithome.com.tw/users/20111772/ironman/1902',
+        'https://ithelp.ithome.com.tw/users/20107697/ironman/1900',
+        'https://ithelp.ithome.com.tw/users/20107700/ironman/1901',
+        'https://ithelp.ithome.com.tw/users/20111959/ironman/1786',
+        'https://ithelp.ithome.com.tw/users/20107702/ironman/1904',
+        'https://ithelp.ithome.com.tw/users/20110801/ironman/1899',
+        'https://ithelp.ithome.com.tw/users/20107637/ironman/1927',
+        'https://ithelp.ithome.com.tw/users/20107701/ironman/1785',
+        'https://ithelp.ithome.com.tw/users/20112161/ironman/1905',
+        'https://ithelp.ithome.com.tw/users/20112158/ironman/1914',
+        'https://ithelp.ithome.com.tw/users/20110055/ironman/1920',
+        'https://ithelp.ithome.com.tw/users/20112096/ironman/1857',
+        'https://ithelp.ithome.com.tw/users/20103075/ironman/1921',
+        'https://ithelp.ithome.com.tw/users/20112307/ironman/1954',
+        'https://ithelp.ithome.com.tw/users/20112097/ironman/1858',
+        'https://ithelp.ithome.com.tw/users/20112383/ironman/1976',
+        'https://ithelp.ithome.com.tw/users/20112388/ironman/1978',
+        'https://ithelp.ithome.com.tw/users/20111529/ironman/1985',
+        'https://ithelp.ithome.com.tw/users/20112160/ironman/1988',
+        'https://ithelp.ithome.com.tw/users/20112157/ironman/1999',
+        'https://ithelp.ithome.com.tw/users/20112452/ironman/2002'
+    ];
+
+    var today = new Date();
+    var dd = today.getDate();
+    var mm = today.getMonth() + 1;
+    var yyyy = today.getFullYear();
+    if (dd < 10) {
+        dd = '0' + dd;
+    }
+    if (mm < 10) {
+        mm = '0' + mm;
+    }
+    today = yyyy + '-' + mm +'-' + dd;
+
+    // prepare data for chart
+    var result = [];
+    result.push(['Name','發文數',{ role: 'style' }]);
+
+    // prepare for progress bar
+    var percent = 0;
+
+    var promiseGetData = new Promise(function (resolve, reject) {
+
+        for (var j = 0; j < urls.length; j++) {
+            let person = [];
+            axios.get(urls[j])
+                .then(function (response) {
+
+                    var el = document.createElement('html');
+                    el.innerHTML = response.data;
+
+                    percent = drawProgressBar(percent);
+                    var pagi = el.querySelector('.pagination').children;
+                    if (pagi) {
+                        var newUrl = pagi[pagi.length - 2].children[0].href;
+                        var newPage = pagi[pagi.length - 2].children[0].textContent;
+
+                        axios.get(newUrl).then(function (response) {
+                            var el = document.createElement('html');
+                            el.innerHTML = response.data;
+
+                            // name
+                            var res1 = el.getElementsByClassName('profile-header__name');
+                            person.push(res1[0].textContent.trim());
+
+                            // article date
+                            var res = el.getElementsByClassName('qa-list__info-time');
+                            var flag = false;
+
+                            person.push((newPage - 1) * 10 + res.length);
+                            for (var i = 0; i < res.length; i++) {
+                                if (res[i].textContent == today) {
+                                    flag = true;
+                                }
+                            }
+
+                            if (flag) {
+                                person.push('color:blue;opacity: 0.7');
+                            } else {
+                                person.push('color:red');
+                            }
+
+                            result.push(person);
+                            percent = drawProgressBar(percent);
+
+                            if (result.length == urls.length) {
+                                resolve(result);
+                            }
+                        });
+                        return;
+                    }
+
+                    // name
+                    var res1 = el.getElementsByClassName('profile-header__name');
+                    person.push(res1[0].textContent.trim());
+
+                    // article date
+                    var res = el.getElementsByClassName('qa-list__info-time');
+                    var flag = false;
+
+                    person.push(res.length);
+                    for (var i = 0; i < res.length; i++) {
+                        if (res[i].textContent == today) {
+                            flag = true;
+                        }
+                    }
+
+                    if (flag) {
+                        person.push('color:blue;opacity: 0.7');
+                    } else {
+                        person.push('color:red');
+                    }
+
+                    result.push(person);
+
+                    if (result.length == urls.length) {
+                        resolve(result);
+                    }
+                })
+                .catch(function (error) {
+                    console.log(error);
+                });
+        }
+    });
+
+    function runPromise() {
+        promiseGetData.then(function (result) {
+            google.charts.load('current', {packages: ['corechart', 'bar']});
+            google.charts.setOnLoadCallback(drawBasic);
+        })
+    }
+
+    function drawBasic() {
+        var data = google.visualization.arrayToDataTable(result);
+
+        var options = {
+            title: '2018鐵人賽發文統計',
+            width: 1400,
+            height: 720,
+            bar: {groupWidth:"70%"},
+            chartArea: {width: '50%'},
+            hAxis: {minValue: 0},
+        };
+
+        var chart = new google.visualization.BarChart(document.getElementById('chart'));
+
+        chart.draw(data, options);
+    }
+
+    function drawProgressBar(width) {
+        var elem = document.getElementById("myBar");
+        var elemP = document.getElementById("pText");
+        if (width < 100) {
+            width += 2.5;
+            elemP.textContent = width + '%';
+            elem.style.width = width + '%';
+        }
+        return width;
+    }
+</script>
+<body onload="runPromise()">
+    <div id="myProgress" style="width:100%">
+        <div id="myBar" style="width:1%; height: 30px; background-color: #4CAF50">
+        </div>
+    </div>
+    <div>
+        <span id="pText" style="font-size: 40px"></span>
+    </div>
+    <div id="chart" style="text-align: center">
+    </div>
+</body>
+</html>
