@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Calendar</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.22.2/moment.min.js"></script>
+    <script>
+        let m;
+        let pick = [];
+        const PNMONTH = "#c7c0c0";
+        const IMGURL = "checked.png";
+
+        function init() {
+            initApp();
+            checkMonth();
+
+            let year = document.getElementById("yearInput").value = moment().year();
+            let month = document.getElementById("monthInput").value = moment().month() + 1;
+            m = moment().set('year', year).set('month', month - 1).set('date', 1);
+
+            drawGrid(m);
+        }
+
+        function changeDate(type, operate) {
+            let year = document.getElementById("yearInput");
+            let month = document.getElementById("monthInput");
+
+            if (type == "year") {
+                if (operate == "sub") year.value--;
+                if (operate == "add") year.value++;
+            }
+
+            if (type == "month") {
+                if (operate == "sub" && month.value > 1) month.value--;
+                if (operate == "add" && month.value < 12) month.value++;
+                checkMonth();
+            }
+
+            m = moment().set('year', year.value).set('month', month.value - 1).set('date', 1);
+
+            clearEventListener();
+            clearBackgroundImage();
+            clearGrid();
+            clearPick();
+            drawGrid(m);
+        }
+
+        function checkMonth() {
+            let month = document.getElementById("monthInput");
+            document.getElementById("subMonth").disabled = false;
+            document.getElementById("addMonth").disabled = false;
+
+            if (month.value == 1) {
+                document.getElementById("subMonth").disabled = true;
+            }
+
+            if (month.value == 12) {
+                document.getElementById("addMonth").disabled = true;
+            }
+        }
+
+        function initApp() {
+            let app = document.getElementById("app");
+            app.style.width = "825px";
+            app.style.margin = "0 auto";
+
+            let top = document.createElement("div");
+            top.style.height = "50px";
+            top.style.textAlign = "center";
+
+            initSelector(top);
+
+            app.appendChild(top);
+
+            let bot = document.createElement("div");
+            bot.style.height = "750px";
+            bot.style.display = "flex";
+            bot.style.justifyContent = "center";
+
+            initSide(bot);
+            initContent(bot);
+
+            app.appendChild(bot);
+        }
+
+        function initSelector(app) {
+            let selector = document.createElement("div");
+            selector.style.width = "100%";
+
+            let subY = document.createElement("button");
+            subY.id = "subYear";
+            subY.style.width = "36px";
+            subY.style.height = "36px";
+            subY.style.borderRadius = "50%";
+            subY.innerHTML = "<";
+
+            subY.addEventListener("click", function() {
+                changeDate('year', 'sub');
+            });
+
+            selector.appendChild(subY);
+
+            let yearInput = document.createElement("input");
+            yearInput.id = "yearInput";
+            yearInput.style.height = "26px";
+            yearInput.style.textAlign = "center";
+            yearInput.style.fontSize = "20px";
+            yearInput.style.borderRadius = "5px";
+
+            selector.appendChild(yearInput);
+
+            let addY = document.createElement("button");
+            addY.id = "addYear";
+            addY.style.width = "36px";
+            addY.style.height = "36px";
+            addY.style.borderRadius = "50%";
+            addY.innerHTML = ">";
+
+            addY.addEventListener("click", function() {
+                changeDate('year', 'add');
+            });
+
+            selector.appendChild(addY);
+
+            let subM = document.createElement("button");
+            subM.id = "subMonth";
+            subM.style.width = "36px";
+            subM.style.height = "36px";
+            subM.style.borderRadius = "50%";
+            subM.innerHTML = "<";
+
+            subM.addEventListener("click", function() {
+                changeDate('month', 'sub');
+            });
+
+            selector.appendChild(subM);
+
+            let monthInput = document.createElement("input");
+            monthInput.id = "monthInput";
+            monthInput.style.height = "26px";
+            monthInput.style.textAlign = "center";
+            monthInput.style.fontSize = "20px";
+            monthInput.style.borderRadius = "5px";
+
+            selector.appendChild(monthInput);
+
+            let addM = document.createElement("button");
+            addM.id = "addMonth";
+            addM.style.width = "36px";
+            addM.style.height = "36px";
+            addM.style.borderRadius = "50%";
+            addM.innerHTML = ">";
+
+            addM.addEventListener("click", function() {
+                changeDate('month', 'add');
+            });
+
+            selector.appendChild(addM);
+
+            app.appendChild(selector);
+
+        }
+
+        function initSide(app) {
+            let side = document.createElement("div");
+            side.style.width = "27%";
+            side.style.display = "flex";
+            side.style.flexDirection = "column";
+
+            let i;
+            for (i = 0; i <= 6; i++) {
+                let d = document.createElement("div");
+                d.style.width = "100%";
+                d.style.height = "100%";
+                d.style.border = "1px solid blue";
+                d.style.fontSize = "xx-large";
+                if (i == 0) {
+                    d.innerHTML = "Reset";
+                    d.addEventListener("click", function() {
+                        reset();
+                    });
+                }
+
+                if (i != 0) {
+                    d.innerHTML = "week-" + i;
+
+                    d.addEventListener("click", function() {
+                        weekPicker(this, true);
+                    });
+                    d.addEventListener("dblclick", function() {
+                        weekPicker(this, false);
+                    });
+                }
+
+                side.appendChild(d);
+            }
+            app.appendChild(side);
+        }
+
+        function initContent(app) {
+            let content = document.createElement("div");
+            content.style.display = "flex";
+            content.style.flexWrap = "wrap";
+            content.style.alignContent = "flex-start";
+
+            initWeekBar(content);
+
+            initEveryday(content)
+
+            app.appendChild(content);
+        }
+
+        function initWeekBar(content) {
+            let weekDay = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+            for (i = 0; i <= 6; i++) {
+                let d = document.createElement("div");
+                d.style.width = "14%";
+                d.style.height = "14%";
+                d.style.border = "1px solid red";
+                d.style.fontSize = "xx-large";
+                d.innerHTML = weekDay[i];
+                if (i != 0 && i != 6) {
+                    d.addEventListener("click", function() {
+                        weekDayPicker(this, true);
+                    });
+                    d.addEventListener("dblclick", function() {
+                        weekDayPicker(this, false);
+                    });
+                }
+                content.appendChild(d);
+            }
+        }
+
+        function initEveryday(content) {
+            for (i = 0; i < 42; i++) {
+                let d = document.createElement("div");
+
+                d.id = i;
+                d.style.width = "14%";
+                d.style.height = "14%";
+                d.style.border = "1px solid black";
+                d.style.fontSize = "large";
+                content.appendChild(d);
+            }
+        }
+
+        function drawGrid(date) {
+            let firstDayOfMonth = date.day();
+            let daysInMonth = date.daysInMonth();
+            let daysInPrevious = date.subtract(1, 'months').daysInMonth();
+
+            let i;
+            let weekDay = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+            for (i = firstDayOfMonth - 1; i >= 0; i--) {
+                let d = document.getElementById(i);
+                d.style.color = PNMONTH;
+                d.style.fontSize = "xx-large";
+                d.innerHTML = daysInPrevious--;
+            }
+
+            for (i = 1; i <= daysInMonth; i++) {
+                let day = firstDayOfMonth + i - 1;
+                let d = document.getElementById(day);
+
+                if (day % 7 != 0 && day % 7 != 6) {
+                d.addEventListener("click", function() {
+                    dayPicker(this, true);
+                });
+                d.addEventListener("dblclick", function() {
+                    dayPicker(this, false);
+                });
+                }
+
+                d.className += weekDay[day % 7];
+                d.className += " month";
+                d.className += " week-" + (Math.floor(day / 7) + 1);
+                d.style.fontSize = "xx-large";
+                d.innerHTML = i;
+            }
+
+            for (i = firstDayOfMonth + daysInMonth; i < 42 ; i++) {
+                let d = document.getElementById(i);
+                d.style.color = PNMONTH;
+                d.style.fontSize = "xx-large";
+                d.innerHTML = i - (firstDayOfMonth + daysInMonth) + 1;
+            }
+        }
+
+        function clearGrid() {
+            for (i = 0; i < 42; i++) {
+                let d = document.getElementById(i);
+
+                d.className = "";
+                d.innerHTML = "";
+                d.style.backgroundColor = "white";
+                d.style.fontSize = "";
+                d.style.color = "black";
+            }
+        }
+
+        function weekDayPicker(obj, selected) {
+            let objs = document.getElementsByClassName(obj.innerHTML);
+            let color = "white";
+
+            for (let o of objs) {
+                o.style.backgroundSize = "100% 100%";
+                if (selected) o.style.backgroundImage = "url(" + IMGURL + ")";
+                if (!selected) o.style.backgroundImage = "none";
+
+                setPick(o, selected);
+            }
+
+            showPick();
+        }
+
+        function weekPicker(obj, selected) {
+            let objs = document.getElementsByClassName(obj.innerHTML);
+            let color = "white";
+
+            if (selected) color = "blue";
+
+            for (let o of objs) {
+                let weekDay = o.className.split(" ")[0];
+                o.style.backgroundSize = "100% 100%";
+                if (weekDay != "Sun" && weekDay != "Sat") {
+                    if (selected) o.style.backgroundImage = "url(" + IMGURL + ")";
+                    if (!selected) o.style.backgroundImage = "none";
+
+                    setPick(o, selected);
+                }
+            }
+
+            showPick();
+        }
+
+        function dayPicker(obj, selected) {
+            let color = "white";
+
+            obj.style.backgroundSize = "100% 100%";
+            if (selected) obj.style.backgroundImage = "url(" + IMGURL + ")";
+            if (!selected) obj.style.backgroundImage = "none";
+
+            setPick(obj, selected);
+
+            showPick();
+        }
+
+        function setPick(obj, operation) {
+            let day = obj.innerHTML;
+            if (day < 10) day = "0" + day;
+
+            let dateStr = m.year() + "-" + (m.month() + 2) + "-" + day
+
+            if (operation) {
+                pick.push(dateStr);
+                pick = [...new Set(pick)];
+                pick.sort();
+            }
+
+            if (!operation) {
+                pick.splice(pick.indexOf(dateStr), 1);
+            }
+        }
+
+        function clearPick() {
+            pick = [];
+        }
+
+        function showPick() {
+            console.log(pick);
+        }
+
+        function clearEventListener() {
+            let i;
+            for (i = 0; i < 42; i++) {
+                let d = document.getElementById(i);
+                let nd = d.cloneNode(true);
+                d.parentNode.replaceChild(nd, d);
+            }
+        }
+
+        function clearBackgroundImage() {
+            let i;
+            for (i = 0; i < 42; i++) {
+                let d = document.getElementById(i);
+                d.style.backgroundImage = "none";
+            }
+        }
+
+        function reset() {
+            let year = document.getElementById("yearInput");
+            let month = document.getElementById("monthInput");
+            let m = moment().set('year', year).set('month', month - 1).set('date', 1);
+
+            changeDate(m);
+            showPick();
+        }
+
+    </script>
+</head>
+<body onload="init()">
+    <div id="app">
+    </div>
+</body>
+</html>
